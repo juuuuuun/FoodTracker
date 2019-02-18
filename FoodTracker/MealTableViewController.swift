@@ -18,11 +18,15 @@ class MealTableViewController: UITableViewController {
   override func viewDidLoad() {
     super.viewDidLoad()
     
-    // Load the sample data.
-    loadSampleMeals()
-    
     // Use the edit button item provided by the table view controller.
     navigationItem.leftBarButtonItem = editButtonItem
+    
+    if let savedMeals = loadMeals() {
+      meals += savedMeals
+    } else {
+      // Load the sample data.
+      loadSampleMeals()
+    }
 }
   
   // MARK: - Table view data source
@@ -65,6 +69,7 @@ class MealTableViewController: UITableViewController {
     if editingStyle == .delete {
       // Delete the row from the data source
       meals.remove(at: indexPath.row)
+      saveMeals()
       tableView.deleteRows(at: [indexPath], with: .fade)
     } else if editingStyle == .insert {
       // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view
@@ -101,7 +106,8 @@ class MealTableViewController: UITableViewController {
         tableView.insertRows(at: [newIndexPath], with: .automatic)
       }
     }
-    
+    // Save the meals.
+    saveMeals()
   }
   
   //MARK: - Navigation
@@ -132,8 +138,6 @@ class MealTableViewController: UITableViewController {
     default:
       fatalError("Unexpected Segue Identifier; \(String(describing: segue.identifier))")
     }
-    
-
   }
   
   //MARK: Private Methods
@@ -156,5 +160,25 @@ class MealTableViewController: UITableViewController {
     }
     
     meals += [meal1, meal2, meal3]
+  }
+  
+  private func saveMeals() {
+    do {
+      let saveData = try NSKeyedArchiver.archivedData(withRootObject: meals, requiringSecureCoding: false)
+      try saveData.write(to: Meal.ArchiveURL)
+      os_log("Meals successfully saved.", log: OSLog.default, type: .debug)
+    } catch {
+      os_log("Failed to save meals...", log: OSLog.default, type: .error)
+    }
+  }
+  
+  private func loadMeals() -> [Meal]? {
+    do {
+      let loadData = try Data(contentsOf: Meal.ArchiveURL)
+      return try NSKeyedUnarchiver.unarchiveTopLevelObjectWithData(loadData) as? [Meal]
+    } catch {
+      os_log("Failed to load meals...", log: OSLog.default, type: .error)
+      return nil
+    }
   }
 }
